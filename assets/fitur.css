@@ -1,0 +1,87 @@
+/* ----------------------------------------------------------------
+   Fitur tambahan: bunga otomatis SeaBank & emas digital Lakuemas
+   ---------------------------------------------------------------- */
+
+.divider {
+  height: 1px;
+  background: var(--border-soft);
+  margin: 14px 0;
+}
+
+.mini-rows { display: grid; gap: 8px; }
+.mini-rows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.mini-rows > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.mini-rows span { color: var(--text-dim); font-size: .86rem; }
+.mini-rows strong { font-size: .92rem; text-align: right; }
+
+.notice {
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: .88rem;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  margin-top: 12px;
+}
+.notice.ok {
+  border-color: color-mix(in srgb, var(--income) 40%, transparent);
+  background: var(--income-soft);
+}
+.notice.info {
+  border-color: color-mix(in srgb, var(--transfer) 40%, transparent);
+  background: var(--transfer-soft);
+}
+.notice.err {
+  border-color: color-mix(in srgb, var(--expense) 45%, transparent);
+  background: var(--expense-soft);
+}
+.notice .mini-rows { margin-top: 8px; }
+
+.cron-box {
+  margin-top: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  background: var(--bg-soft);
+}
+.cron-box summary { cursor: pointer; font-weight: 600; font-size: .88rem; }
+.cron-box[open] summary { margin-bottom: 4px; }
+
+.log-pre {
+  max-height: 220px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: .76rem;
+  line-height: 1.45;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.total-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  font-weight: 600;
+}
+
+.stat-in .stat-value { color: var(--income); }
+.stat-out .stat-value { color: var(--expense); }
+
+#interestCard .form-grid { margin-bottom: 4px; }
+
+@media (max-width: 640px) {
+  .mini-rows strong { font-size: .86rem; }
+  .log-pre { font-size: .72rem; }
+}

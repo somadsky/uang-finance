@@ -1,0 +1,102 @@
+
+/* ==========================================================================
+   Scan struk belanja
+   ========================================================================== */
+
+.scan-drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 26px 18px; margin: 10px 0 12px; cursor: pointer; text-align: center;
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--text);
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.scan-drop:hover { border-color: var(--accent); background: var(--surface-3); }
+.scan-drop:active { transform: scale(.995); }
+.scan-drop strong { font-size: .98rem; }
+.scan-drop small { color: var(--text-mute); font-size: .78rem; max-width: 340px; }
+.scan-drop-icon { font-size: 1.9rem; line-height: 1; }
+
+.scan-preview {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 10px; margin-bottom: 10px; border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.scan-preview img {
+  max-width: 100%; max-height: 260px; border-radius: 8px; object-fit: contain;
+  background: #fff;
+}
+.scan-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.scan-progress { margin: 12px 0 4px; }
+.scan-progress .progress { height: 8px; }
+.scan-progress p { margin: 6px 0 0; }
+
+.scan-info {
+  padding: 10px 12px; margin-bottom: 10px; border-radius: var(--radius-sm);
+  background: var(--accent-soft); border: 1px solid rgba(16, 185, 129, .35);
+  font-size: .86rem; color: var(--text);
+}
+.scan-warn {
+  margin: 0 0 12px; padding: 10px 12px 10px 28px; list-style: disc;
+  background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .4);
+  border-radius: var(--radius-sm); color: var(--text); font-size: .82rem;
+}
+.scan-warn li { margin: 2px 0; }
+
+.scan-items-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 14px 0 6px;
+}
+/* Label "simpan rincian" boleh membungkus di layar sempit. */
+.scan-items-head .check {
+  display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+  flex: 1 1 auto; white-space: normal; line-height: 1.25;
+}
+.scan-items-head .check input { flex: 0 0 auto; }
+.items-table-wrap { overflow-x: auto; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
+.items-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.items-table th, .items-table td {
+  padding: 6px 8px; border-bottom: 1px solid var(--border-soft); text-align: left;
+}
+.items-table th { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-mute); font-weight: 600; }
+.items-table tr:last-child td { border-bottom: 0; }
+.items-table input {
+  width: 100%; padding: 6px 8px; font-size: .85rem; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+}
+.items-table th:nth-child(2), .items-table td:nth-child(2) { width: 74px; }
+.items-table th:nth-child(3), .items-table td:nth-child(3) { width: 130px; text-align: right; }
+.items-table td:nth-child(3) input { text-align: right; }
+
+.scan-raw { margin: 12px 0; }
+.scan-raw summary { cursor: pointer; font-size: .82rem; color: var(--text-dim); }
+.scan-raw pre {
+  margin: 8px 0 0; padding: 10px; max-height: 200px; overflow: auto;
+  background: var(--bg-soft); border: 1px solid var(--border-soft); border-radius: var(--radius-sm);
+  font-size: .74rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; color: var(--text-dim);
+}
+
+.receipt-view { display: flex; flex-direction: column; gap: 12px; }
+.receipt-img {
+  width: 100%; max-height: 60vh; object-fit: contain; border-radius: var(--radius-sm);
+  background: #fff; border: 1px solid var(--border-soft);
+}
+.receipt-summary {
+  display: flex; flex-direction: column; gap: 4px; padding: 10px 12px;
+  background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--radius-sm);
+}
+
+/* Pilih sumber gambar: kamera atau galeri */
+.scan-sources { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 12px; }
+.scan-drop.compact { padding: 16px 12px; margin: 0; gap: 2px; }
+.scan-drop.compact .scan-drop-icon { font-size: 1.5rem; }
+@media (max-width: 420px) { .scan-sources { grid-template-columns: 1fr; } }
+
+#scanTypeToggle { grid-template-columns: repeat(2, 1fr); margin-bottom: 4px; }
+
+/* Aturan akun per kategori */
+.rule-list { display: grid; gap: 8px; }
+.rule-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: center; }
+.rule-row .rule-cat { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rule-row select { width: 100%; }
+@media (max-width: 560px) { .rule-row { grid-template-columns: 1fr; gap: 4px; } }
