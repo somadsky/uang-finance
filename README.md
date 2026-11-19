@@ -460,13 +460,7 @@ Jika menemukan bug atau memiliki ide fitur baru:
 2. Jelaskan masalah atau fitur yang diusulkan.
 3. Sertakan langkah untuk mereproduksi masalah jika melaporkan bug.
 
----
 
-## 📄 Lisensi
-
-Project ini belum menetapkan lisensi distribusi.
-
-Penggunaan, penyalinan, dan distribusi source code mengikuti ketentuan pemilik repository.
 
 ---
 
