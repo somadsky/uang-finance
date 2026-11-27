@@ -130,12 +130,27 @@ if (($_GET['action'] ?? '') === 'companion.ingest') {
         }
 
         $type = $direction;
+        $preferredCategoryId = $type === 'income' ? 'cat_lain_inc' : 'cat_lain_exp';
         $category = null;
         foreach ($db['categories'] as $candidate) {
-            if (($candidate['type'] ?? '') === $type) {
+            if (($candidate['id'] ?? '') === $preferredCategoryId && ($candidate['type'] ?? '') === $type) {
                 $category = $candidate;
                 break;
             }
+        }
+        if ($category === null) {
+            foreach ($db['categories'] as $candidate) {
+                if (($candidate['type'] ?? '') === $type
+                    && stripos((string)($candidate['name'] ?? ''), 'lain') !== false) {
+                    $category = $candidate;
+                    break;
+                }
+            }
+        }
+        if ($category === null) {
+            $error = 'Kategori umum pemasukan/pengeluaran belum tersedia.';
+            $status = 422;
+            return;
         }
         if ($category === null) {
             $error = 'Kategori pemasukan/pengeluaran belum tersedia.';
