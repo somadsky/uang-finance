@@ -15,10 +15,6 @@ if (!auth_is_https()) {
     exit('Halaman Android Companion wajib dibuka melalui HTTPS.');
 }
 
-
-auth_security_headers();
-header('Cache-Control: no-store, no-cache, must-revalidate');
-
 if (!auth_page_allowed()) {
     header('Location: index.php');
     exit;
