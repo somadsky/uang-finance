@@ -30,7 +30,10 @@ function companion_decode_state(string $raw): array
     }
     $data = json_decode($raw, true);
     if (!is_array($data)) {
-        return companion_empty_state();
+        if (trim($raw) === '') {
+            return companion_empty_state();
+        }
+        throw new RuntimeException('Berkas token Companion rusak atau tidak dapat dibaca; data tidak ditimpa.');
     }
     if (!isset($data['devices']) || !is_array($data['devices'])) {
         $data['devices'] = [];
@@ -58,7 +61,7 @@ function companion_mutate(callable $callback)
     }
     $denyFile = DATA_DIR . '/.htaccess';
     if (!is_file($denyFile)) {
-        @file_put_contents($denyFile, "Require all denied\\nOrder allow,deny\\nDeny from all\\nOptions -Indexes\\n", LOCK_EX);
+        @file_put_contents($denyFile, "Require all denied\nOrder allow,deny\nDeny from all\nOptions -Indexes\n", LOCK_EX);
     }
     $lock = @fopen(COMPANION_FILE . '.lock', 'c+b');
     if (!$lock || !flock($lock, LOCK_EX)) {
