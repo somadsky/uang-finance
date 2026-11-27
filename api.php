@@ -156,11 +156,6 @@ if (($_GET['action'] ?? '') === 'companion.ingest') {
             $status = 422;
             return;
         }
-        if ($category === null) {
-            $error = 'Kategori pemasukan/pengeluaran belum tersedia.';
-            $status = 422;
-            return;
-        }
 
         $row = [
             'id' => gen_id('tx'),
