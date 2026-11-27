@@ -17,15 +17,16 @@ object NotificationParser {
     private val rupiahPattern = Regex("(?i)\\bRp\\.?\\s*([0-9][0-9.,]*)")
     private val datePattern = Regex("\\b([0-3]?[0-9])[/-]([01]?[0-9])[/-]([0-9]{4})\\b")
     private val incomePattern = Regex(
-        "(?i)\\b(dana masuk|uang masuk|transfer masuk|diterima|menerima dana|berhasil menerima|top ?up berhasil|refund berhasil|pengembalian dana)\\b"
+        "(?i)\\b(dana masuk|uang masuk|refund berhasil|pengembalian dana|cashback masuk|bunga tabungan)\\b"
     )
     private val expensePattern = Regex(
-        "(?i)\\b(pembayaran berhasil|berhasil membayar|pembelian berhasil|transfer keluar|berhasil dikirim|kirim uang|pembayaran|pembelian|transaksi debit|tarik tunai|qris)\\b"
+        "(?i)\\b(pembayaran berhasil|berhasil membayar|pembelian berhasil|pembayaran|pembelian|transaksi debit|qris)\\b"
     )
+    private val transferPattern = Regex("(?i)\\b(transfer|top ?up|tarik tunai|penarikan)\\b")
 
     fun parse(notificationKey: String, postTimeMillis: Long, title: String, text: String): ParsedSeaBankTransaction? {
         val combined = listOf(title, text).filter { it.isNotBlank() }.joinToString(" ")
-        if (combined.isBlank()) return null
+        if (combined.isBlank() || transferPattern.containsMatchIn(combined)) return null
 
         val incoming = incomePattern.containsMatchIn(combined)
         val outgoing = expensePattern.containsMatchIn(combined)
