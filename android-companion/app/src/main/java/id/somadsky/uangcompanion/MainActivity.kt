@@ -112,7 +112,10 @@ class MainActivity : Activity() {
     private fun refreshNotificationStatus() {
         val enabled = NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
         val prefix = if (enabled) "Akses notifikasi aktif." else "Akses notifikasi belum diaktifkan."
-        val old = statusText.text.toString().substringBefore("\n")
+        val old = statusText.text.toString().lineSequence()
+            .filterNot { it.startsWith("Akses notifikasi ") }
+            .joinToString("\n")
+            .ifBlank { "Status: belum diuji." }
         statusText.text = "$prefix\n$old"
     }
 
