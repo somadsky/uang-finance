@@ -10,6 +10,15 @@ require __DIR__ . '/inc/companion.php';
 auth_security_headers();
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
+if (!auth_is_https()) {
+    http_response_code(426);
+    exit('Halaman Android Companion wajib dibuka melalui HTTPS.');
+}
+
+
+auth_security_headers();
+header('Cache-Control: no-store, no-cache, must-revalidate');
+
 if (!auth_page_allowed()) {
     header('Location: index.php');
     exit;
