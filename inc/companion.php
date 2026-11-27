@@ -56,6 +56,10 @@ function companion_mutate(callable $callback)
     if (!is_dir(DATA_DIR) && !@mkdir(DATA_DIR, 0775, true) && !is_dir(DATA_DIR)) {
         throw new RuntimeException('Folder data tidak dapat dibuat.');
     }
+    $denyFile = DATA_DIR . '/.htaccess';
+    if (!is_file($denyFile)) {
+        @file_put_contents($denyFile, "Require all denied\\nOrder allow,deny\\nDeny from all\\nOptions -Indexes\\n", LOCK_EX);
+    }
     $lock = @fopen(COMPANION_FILE . '.lock', 'c+b');
     if (!$lock || !flock($lock, LOCK_EX)) {
         if (is_resource($lock)) {
@@ -74,6 +78,9 @@ function companion_mutate(callable $callback)
         }
         $tmp = COMPANION_FILE . '.' . bin2hex(random_bytes(6)) . '.tmp';
         $written = @file_put_contents($tmp, COMPANION_GUARD . $json, LOCK_EX);
+        if ($written !== false) {
+            @chmod($tmp, 0600);
+        }
         if ($written === false || !@rename($tmp, COMPANION_FILE)) {
             @unlink($tmp);
             throw new RuntimeException('Data perangkat gagal disimpan.');
