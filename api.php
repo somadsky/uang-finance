@@ -43,6 +43,27 @@ set_exception_handler(static function (Throwable $e): void {
 
 header('X-Content-Type-Options: nosniff');
 
+/* ---------- Android Companion connection test ---------- */
+if (($_GET['action'] ?? '') === 'companion.ping') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET' || !auth_is_https()
+        || strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'uang-companion') {
+        json_err('Permintaan tidak sah atau HTTPS wajib digunakan.', 403);
+    }
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authorization = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ($headers['Authorization'] ?? ''));
+    $deviceToken = trim($authorization);
+    if (stripos($deviceToken, 'Bearer ') === 0) {
+        $deviceToken = trim(substr($deviceToken, 7));
+    }
+    $device = companion_device_by_token($deviceToken);
+    if ($device === null) {
+        json_err('Token perangkat tidak valid atau sudah dicabut.', 401);
+    }
+    companion_touch_device((string)$device['id']);
+    json_ok(['connected' => true, 'device' => $device['label'], 'serverTime' => date('c')]);
+    exit;
+}
+
 /* ---------- Android Companion ingest: token perangkat terpisah dari sesi web ---------- */
 if (($_GET['action'] ?? '') === 'companion.ingest') {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -77,7 +98,7 @@ if (($_GET['action'] ?? '') === 'companion.ingest') {
     $merchant = in_str($payload, 'merchant', '', 80);
 
     if (!preg_match('/^[a-f0-9]{64}$/i', $eventId)
-        || !(is_int($amountRaw) || is_float($amountRaw) || (is_string($amountRaw) && preg_match('/^\\d{1,13}(?:\\.\\d{1,2})?$/', $amountRaw)))
+        || !(is_int($amountRaw) || is_float($amountRaw) || (is_string($amountRaw) && preg_match('/^\d{1,13}(?:\\.\d{1,2})?$/', $amountRaw)))
         || (float)$amountRaw <= 0 || (float)$amountRaw > 1000000000000
         || !valid_date($date) || !in_array($direction, ['income', 'expense'], true)) {
         json_err('Data transaksi tidak lengkap atau tidak valid.', 422);
