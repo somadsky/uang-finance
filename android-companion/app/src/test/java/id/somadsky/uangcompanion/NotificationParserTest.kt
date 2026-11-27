@@ -22,7 +22,7 @@ class NotificationParserTest {
         val result = NotificationParser.parse(
             notificationKey = "test-key",
             postTimeMillis = 1764000000000,
-            title = "Transfer masuk",
+            title = "Dana masuk",
             text = "Dana masuk sebesar Rp1.250.000"
         )
         assertEquals(1_250_000L, result?.amount)
