@@ -23,6 +23,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up PHP for backend syntax checks
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+
+      - name: Check PHP syntax
+        run: |
+          php -l api.php
+          php -l companion.php
+          php -l inc/companion.php
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
