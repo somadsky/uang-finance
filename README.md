@@ -417,6 +417,23 @@ Untuk menjaga keamanan data keuangan:
 
 ---
 
+## 📱 Android Companion — SeaBank (Beta)
+
+UANG menyediakan modul pendamping Android untuk meneruskan notifikasi transaksi SeaBank yang dapat dibaca dengan jelas.
+
+- Memproses notifikasi hanya dari aplikasi SeaBank.
+- Mengirim nominal, arah transaksi yang terdeteksi, tanggal, dan ID deduplikasi.
+- Mengantrekan sinkronisasi saat jaringan tidak tersedia.
+- Menyimpan token perangkat secara terenkripsi di Android Keystore.
+- Menyediakan pengelolaan token perangkat melalui halaman `companion.php`.
+- Transaksi otomatis menggunakan kategori umum dan diberi catatan **perlu verifikasi**.
+
+**Batasan:** metode ini berbasis notifikasi Android, bukan integrasi API rekening SeaBank. Transaksi yang notifikasinya tidak tampil, nominalnya disembunyikan, atau arah transaksinya ambigu tidak akan otomatis dicatat. Transfer antar rekening, top-up, dan tarik tunai sengaja dilewatkan agar tidak keliru dianggap sebagai pemasukan/pengeluaran.
+
+Panduan instalasi, build, dan konfigurasi: [Android Companion README](android-companion/README.md).
+
+Aktifkan halaman pengelolaan setelah login di `https://domain-anda/companion.php`. Halaman ini membutuhkan HTTPS.
+
 ## 🗺️ Roadmap Pengembangan
 
 Beberapa pengembangan yang dapat dilakukan selanjutnya:

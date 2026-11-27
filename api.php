@@ -13,6 +13,7 @@ try {
     require __DIR__ . '/inc/interest.php';
     require __DIR__ . '/inc/gold.php';
     require __DIR__ . '/inc/auth.php';
+    require __DIR__ . '/inc/companion.php';
 } catch (Throwable $e) {
     if (!headers_sent()) {
         http_response_code(500);
@@ -41,6 +42,154 @@ set_exception_handler(static function (Throwable $e): void {
 });
 
 header('X-Content-Type-Options: nosniff');
+
+/* ---------- Android Companion connection test ---------- */
+if (($_GET['action'] ?? '') === 'companion.ping') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET' || !auth_is_https()
+        || strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'uang-companion') {
+        json_err('Permintaan tidak sah atau HTTPS wajib digunakan.', 403);
+    }
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authorization = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ($headers['Authorization'] ?? ''));
+    $deviceToken = trim($authorization);
+    if (stripos($deviceToken, 'Bearer ') === 0) {
+        $deviceToken = trim(substr($deviceToken, 7));
+    }
+    $device = companion_device_by_token($deviceToken);
+    if ($device === null) {
+        json_err('Token perangkat tidak valid atau sudah dicabut.', 401);
+    }
+    try {
+        companion_touch_device((string)$device['id']);
+    } catch (Throwable $e) {
+        error_log('Uang Companion ping update failed: ' . $e->getMessage());
+    }
+    json_ok(['connected' => true, 'device' => $device['label'], 'serverTime' => date('c')]);
+    exit;
+}
+
+/* ---------- Android Companion ingest: token perangkat terpisah dari sesi web ---------- */
+if (($_GET['action'] ?? '') === 'companion.ingest') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        json_err('Metode tidak didukung.', 405);
+    }
+    if (!auth_is_https()) {
+        json_err('Android Companion hanya boleh terhubung melalui HTTPS.', 426);
+    }
+    if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'uang-companion') {
+        json_err('Permintaan perangkat tidak sah.', 403);
+    }
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authorization = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ($headers['Authorization'] ?? ''));
+    $deviceToken = trim($authorization);
+    if (stripos($deviceToken, 'Bearer ') === 0) {
+        $deviceToken = trim(substr($deviceToken, 7));
+    }
+    if ($deviceToken === '' || strlen($deviceToken) > 200) {
+        json_err('Token perangkat tidak valid.', 401);
+    }
+    $device = companion_device_by_token($deviceToken);
+    if ($device === null) {
+        json_err('Perangkat tidak terdaftar atau sudah dicabut.', 401);
+    }
+
+    $payload = read_json_body();
+    $eventId = in_str($payload, 'eventId', '', 64);
+    $amountRaw = $payload['amount'] ?? null;
+    $direction = in_str($payload, 'direction', '', 20);
+    $date = in_str($payload, 'date', date('Y-m-d'), 10);
+    $note = in_str($payload, 'description', 'Transaksi SeaBank', 180);
+    $merchant = in_str($payload, 'merchant', '', 80);
+
+    if (!preg_match('/^[a-f0-9]{64}$/i', $eventId)
+        || !(is_int($amountRaw) || is_float($amountRaw) || (is_string($amountRaw) && preg_match('/^[0-9]{1,13}(?:[.][0-9]{1,2})?$/', $amountRaw)))
+        || (float)$amountRaw <= 0 || (float)$amountRaw > 1000000000000
+        || !valid_date($date) || !in_array($direction, ['income', 'expense'], true)) {
+        json_err('Data transaksi tidak lengkap atau tidak valid.', 422);
+    }
+
+    $result = null;
+    $error = null;
+    $status = 200;
+    $ok = db_mutate(function (array &$db) use ($eventId, $amountRaw, $direction, $date, $note, $merchant, &$result, &$error, &$status): void {
+        foreach ($db['transactions'] as $transaction) {
+            if (($transaction['source'] ?? '') === 'android_companion'
+                && ($transaction['sourceEventId'] ?? '') === $eventId) {
+                $result = ['duplicate' => true, 'transaction' => $transaction];
+                return;
+            }
+        }
+
+        $account = null;
+        foreach ($db['accounts'] as $candidate) {
+            if (stripos((string)($candidate['name'] ?? ''), 'seabank') !== false) {
+                $account = $candidate;
+                break;
+            }
+        }
+        if ($account === null) {
+            $error = 'Buat akun SeaBank terlebih dahulu pada menu Dompet.';
+            $status = 422;
+            return;
+        }
+
+        $type = $direction;
+        $preferredCategoryId = $type === 'income' ? 'cat_lain_inc' : 'cat_lain_exp';
+        $category = null;
+        foreach ($db['categories'] as $candidate) {
+            if (($candidate['id'] ?? '') === $preferredCategoryId && ($candidate['type'] ?? '') === $type) {
+                $category = $candidate;
+                break;
+            }
+        }
+        if ($category === null) {
+            foreach ($db['categories'] as $candidate) {
+                if (($candidate['type'] ?? '') === $type
+                    && stripos((string)($candidate['name'] ?? ''), 'lain') !== false) {
+                    $category = $candidate;
+                    break;
+                }
+            }
+        }
+        if ($category === null) {
+            $error = 'Kategori umum pemasukan/pengeluaran belum tersedia.';
+            $status = 422;
+            return;
+        }
+
+        $row = [
+            'id' => gen_id('tx'),
+            'date' => $date,
+            'type' => $type,
+            'amount' => round((float)$amountRaw, 2),
+            'accountId' => (string)$account['id'],
+            'toAccountId' => null,
+            'categoryId' => (string)$category['id'],
+            'note' => '[Otomatis · perlu verifikasi] ' . $note . ($merchant !== '' ? ' · ' . $merchant : ''),
+            'source' => 'android_companion',
+            'sourceEventId' => $eventId,
+            'sourceStatus' => 'needs_review',
+            'createdAt' => date('c'),
+            'updatedAt' => date('c'),
+        ];
+        $db['transactions'][] = $row;
+        $result = ['duplicate' => false, 'transaction' => $row];
+    });
+
+    if ($error !== null) {
+        json_err($error, $status);
+    }
+    if (!$ok) {
+        json_err('Transaksi gagal disimpan.', 500);
+    }
+    try {
+        companion_touch_device((string)$device['id']);
+    } catch (Throwable $e) {
+        error_log('Uang Companion last-seen update failed: ' . $e->getMessage());
+    }
+    json_ok($result);
+    exit;
+}
 
 $action = isset($_GET['action']) ? (string)$_GET['action'] : '';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -84,6 +233,10 @@ if ($method === 'GET') {
 
         case 'auth.info':
             json_ok(auth_info());
+            break;
+
+        case 'companion.devices':
+            json_ok(companion_list_devices());
             break;
 
         case 'db':
@@ -222,6 +375,28 @@ if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'fetch') {
 }
 
 $body = read_json_body();
+
+/* ---------- Pengelolaan perangkat Android Companion (web session + CSRF) ---------- */
+if ($action === 'companion.register') {
+    $label = in_str($body, 'label', 'Android device', 80);
+    try {
+        $device = companion_register_device($label);
+    } catch (Throwable $e) {
+        json_err($e->getMessage(), 422);
+    }
+    // Token mentah hanya dikirim sekali. Simpan di Android Keystore pada aplikasi pendamping.
+    json_ok($device, 201);
+}
+
+if ($action === 'companion.revoke') {
+    $id = in_str($body, 'id', '', 32);
+    if ($id === '') {
+        json_err('Perangkat tidak dipilih.', 422);
+    }
+    json_ok(['revoked' => companion_revoke_device($id)]);
+}
+
+
 
 /* ---------- Aksi autentikasi (tidak menyentuh data keuangan) ---------- */
 if ($action === 'auth.login') {
