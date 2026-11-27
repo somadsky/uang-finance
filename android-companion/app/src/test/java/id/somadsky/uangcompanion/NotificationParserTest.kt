@@ -30,6 +30,17 @@ class NotificationParserTest {
     }
 
     @Test
+    fun ignoresInternalTransferToAvoidIncorrectExpense() {
+        val result = NotificationParser.parse(
+            notificationKey = "transfer-key",
+            postTimeMillis = 1764000000000,
+            title = "Transfer masuk",
+            text = "Transfer berhasil sebesar Rp500.000"
+        )
+        assertNull(result)
+    }
+
+    @Test
     fun ignoresAmbiguousNotification() {
         val result = NotificationParser.parse(
             notificationKey = "test-key",
