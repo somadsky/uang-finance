@@ -42,6 +42,105 @@ set_exception_handler(static function (Throwable $e): void {
 
 header('X-Content-Type-Options: nosniff');
 
+/* ---------- Android Companion: token perangkat terpisah dari sesi web ---------- */
+if (($_GET['action'] ?? '') === 'companion.ingest') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        json_err('Metode tidak didukung.', 405);
+    }
+    if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'uang-companion') {
+        json_err('Permintaan perangkat tidak sah.', 403);
+    }
+    $deviceToken = trim((string)($_SERVER['HTTP_AUTHORIZATION'] ?? ''));
+    if (stripos($deviceToken, 'Bearer ') === 0) {
+        $deviceToken = trim(substr($deviceToken, 7));
+    }
+    if ($deviceToken === '' || strlen($deviceToken) > 200) {
+        json_err('Token perangkat tidak valid.', 401);
+    }
+    $state = companion_state();
+    $deviceHash = hash('sha256', $deviceToken);
+    $device = $state['devices'][$deviceHash] ?? null;
+    if (!is_array($device) || !empty($device['revokedAt'])) {
+        json_err('Perangkat tidak terdaftar atau sudah dicabut.', 401);
+    }
+    $payload = read_json_body();
+    $eventId = in_str($payload, 'eventId', '', 120);
+    $amount = $payload['amount'] ?? null;
+    $direction = in_str($payload, 'direction', '', 20);
+    $date = in_str($payload, 'date', date('Y-m-d'), 10);
+    $note = in_str($payload, 'description', 'SeaBank notification', 180);
+    if ($eventId === '' || !is_numeric($amount) || (float)$amount <= 0
+        || (float)$amount > 1000000000000 || !valid_date($date)
+        || !in_array($direction, ['income', 'expense'], true)) {
+        json_err('Data transaksi tidak lengkap atau tidak valid.', 422);
+    }
+    $merchant = in_str($payload, 'merchant', '', 80);
+    $existing = null;
+    foreach (db_read()['transactions'] as $t) {
+        if (($t['source'] ?? '') === 'android_companion'
+            && ($t['sourceEventId'] ?? '') === $eventId) {
+            $existing = $t;
+            break;
+        }
+    }
+    if ($existing !== null) {
+        json_ok(['duplicate' => true, 'transaction' => $existing]);
+    }
+    $result = null;
+    $ok = db_mutate(function (array &$db) use ($eventId, $amount, $direction, $date, $note, $merchant, &$result) {
+        foreach ($db['transactions'] as $t) {
+            if (($t['source'] ?? '') === 'android_companion'
+                && ($t['sourceEventId'] ?? '') === $eventId) {
+                $result = ['duplicate' => true, 'transaction' => $t];
+                return;
+            }
+        }
+        $account = null;
+        foreach ($db['accounts'] as $a) {
+            if (stripos((string)($a['name'] ?? ''), 'seabank') !== false) {
+                $account = $a;
+                break;
+            }
+        }
+        if ($account === null) {
+            throw new RuntimeException('Akun SeaBank belum dibuat di menu Dompet.');
+        }
+        $type = $direction === 'income' ? 'income' : 'expense';
+        $category = null;
+        foreach ($db['categories'] as $c) {
+            if (($c['type'] ?? '') === $type) {
+                $category = $c;
+                break;
+            }
+        }
+        if ($category === null) {
+            throw new RuntimeException('Kategori transaksi belum tersedia.');
+        }
+        $row = [
+            'id' => gen_id('tx'),
+            'date' => $date,
+            'type' => $type,
+            'amount' => round((float)$amount, 2),
+            'accountId' => (string)$account['id'],
+            'toAccountId' => null,
+            'categoryId' => (string)$category['id'],
+            'note' => $note . ($merchant !== '' ? ' · ' . $merchant : ''),
+            'source' => 'android_companion',
+            'sourceEventId' => $eventId,
+            'sourceStatus' => 'needs_review',
+            'createdAt' => date('c'),
+            'updatedAt' => date('c'),
+        ];
+        $db['transactions'][] = $row;
+        $result = ['duplicate' => false, 'transaction' => $row];
+    });
+    if (!$ok) {
+        json_err('Transaksi gagal disimpan.', 500);
+    }
+    json_ok($result);
+    exit;
+}
+
 $action = isset($_GET['action']) ? (string)$_GET['action'] : '';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
