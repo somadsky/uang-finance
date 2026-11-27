@@ -59,7 +59,11 @@ if (($_GET['action'] ?? '') === 'companion.ping') {
     if ($device === null) {
         json_err('Token perangkat tidak valid atau sudah dicabut.', 401);
     }
-    companion_touch_device((string)$device['id']);
+    try {
+        companion_touch_device((string)$device['id']);
+    } catch (Throwable $e) {
+        error_log('Uang Companion ping update failed: ' . $e->getMessage());
+    }
     json_ok(['connected' => true, 'device' => $device['label'], 'serverTime' => date('c')]);
     exit;
 }
@@ -98,7 +102,7 @@ if (($_GET['action'] ?? '') === 'companion.ingest') {
     $merchant = in_str($payload, 'merchant', '', 80);
 
     if (!preg_match('/^[a-f0-9]{64}$/i', $eventId)
-        || !(is_int($amountRaw) || is_float($amountRaw) || (is_string($amountRaw) && preg_match('/^\d{1,13}(?:\\.\d{1,2})?$/', $amountRaw)))
+        || !(is_int($amountRaw) || is_float($amountRaw) || (is_string($amountRaw) && preg_match('/^[0-9]{1,13}(?:[.][0-9]{1,2})?$/', $amountRaw)))
         || (float)$amountRaw <= 0 || (float)$amountRaw > 1000000000000
         || !valid_date($date) || !in_array($direction, ['income', 'expense'], true)) {
         json_err('Data transaksi tidak lengkap atau tidak valid.', 422);
@@ -166,7 +170,7 @@ if (($_GET['action'] ?? '') === 'companion.ingest') {
             'accountId' => (string)$account['id'],
             'toAccountId' => null,
             'categoryId' => (string)$category['id'],
-            'note' => $note . ($merchant !== '' ? ' · ' . $merchant : ''),
+            'note' => '[Otomatis · perlu verifikasi] ' . $note . ($merchant !== '' ? ' · ' . $merchant : ''),
             'source' => 'android_companion',
             'sourceEventId' => $eventId,
             'sourceStatus' => 'needs_review',
@@ -183,7 +187,11 @@ if (($_GET['action'] ?? '') === 'companion.ingest') {
     if (!$ok) {
         json_err('Transaksi gagal disimpan.', 500);
     }
-    companion_touch_device((string)$device['id']);
+    try {
+        companion_touch_device((string)$device['id']);
+    } catch (Throwable $e) {
+        error_log('Uang Companion last-seen update failed: ' . $e->getMessage());
+    }
     json_ok($result);
     exit;
 }
